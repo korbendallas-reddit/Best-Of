@@ -1,5 +1,4 @@
-# Best-Of
-import praw, OAuth2Util, time, io
+import string, praw, OAuth2Util, time, io
 
 
 
@@ -17,7 +16,7 @@ def Main():
     column_headers = []
                             
     column_headers.append('Submission_Title')
-    column_headers.append('Submission_Body')
+    column_headers.append('Submission_Url')
     column_headers.append('Submission_Author')
     column_headers.append('Submission_Score')
     column_headers.append('Submission_Short_Link')
@@ -81,7 +80,7 @@ def Main():
                                     row = []
                             
                                     row.append(str(submission.title))  #Submission_Title
-                                    row.append(string.replace(str(submission.body),'\r','  '))  #Submission_Body
+                                    row.append(string.replace(str(submission.url),'\r','  '))  #Submission_Url
                                     row.append('/u/' + str(submission.author.name))  #Submission_Author
                                     row.append(str(submission.score))  #Submission_Score
                                     row.append(str(submission.short_link))  #Submission_Short_Link

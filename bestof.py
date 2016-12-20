@@ -1,15 +1,16 @@
-import string, praw, OAuth2Util, time, io
+import string, praw, time, io
 
 
 
 def Main():
 
+    weeks_to_scan = 52
+    epoch_today = time.time()
+    
     #Variables to change
-    subname = 'photoshopbattles'
-    username = '_korbendallas_'
-    user_agent = '_korbendallas_ by /u/_korbendallas_ ver 0.1'
-    minimum_karma_threshold = 999
+    subname = 'photoshopbattles'    
     output_file = 'C:\\best.csv'
+    minimum_karma_threshold = 100
 
 
     #Column name array
@@ -29,7 +30,7 @@ def Main():
 
     #Format the headers into a pipe delimited string
     delimited_column_headers = '|'.join(column_headers)
-    print delimited_column_headers
+    print(delimited_column_headers)
 
     #Create the output file and write headers to it
     f = open(output_file, 'w')
@@ -38,15 +39,29 @@ def Main():
     
 
     #Login
-    r = praw.Reddit(user_agent)
-    o = OAuth2Util.praw.AuthenticatedReddit.login(r, disable_warning=True)
+    #r = praw.Reddit(user_agent)
+    r = praw.Reddit(client_id='change_this', client_secret='change_this', user_agent='change_this')
+    #r.login(username, password, disable_warning=True)
 
 
     #Get the top submissions for the year
-    sub = r.get_subreddit(subname)
+    sub = r.subreddit(subname)
 
-    submissions = sub.get_top_from_year(limit=None)
+    for week in range(0, weeks_to_scan):
 
+        print('Scanning week ' + str(week))
+        
+        epoch_from = epoch_today - (604800 + (604800 * week))
+        epoch_to = epoch_today - (604800 * week)
+
+        search_string = 'timestamp:' + str(int(epoch_from)) + '..' + str(int(epoch_to))
+
+        submissions = sub.search(search_string, syntax='cloudsearch', limit=None)
+
+        ScanSubmissions(r, submissions, output_file, minimum_karma_threshold)
+
+
+def ScanSubmissions(r, submissions, output_file, minimum_karma_threshold):
 
     #Go through each submission
     for submission in submissions:
@@ -57,20 +72,21 @@ def Main():
             if submission.author and submission.banned_by == None:
 
                 #Get the comments
-                submission.replace_more_comments(limit=None, threshold=0)
-                comments = praw.helpers.flatten_tree(submission.comments)
+                #submission.replace_more_comments(limit=None, threshold=0)
+                #comments = praw.helpers.flatten_tree(submission.comments)
+                submission.comments.replace_more(limit=None)
 
                 #Disregard submissions with no comments
-                if comments:
+                if submission.comments:
 
                     #Go through each comment
-                    for comment in comments:
+                    for comment in submission.comments.list():
 
                         try:
 
                             #Disregard deleted comments
                             if comment.author:
-
+                                
                                 karma = int(comment.score)
 
                                 #Disregard removed comments and comments below the karma threshold
@@ -80,20 +96,20 @@ def Main():
                                     row = []
                             
                                     row.append(str(submission.title))  #Submission_Title
-                                    row.append(string.replace(str(submission.url),'\r','  '))  #Submission_Url
+                                    row.append(str(submission.url).replace('\r',' '))  #Submission_Url
                                     row.append('/u/' + str(submission.author.name))  #Submission_Author
                                     row.append(str(submission.score))  #Submission_Score
-                                    row.append(str(submission.short_link))  #Submission_Short_Link
+                                    row.append('https://redd.it/' + str(submission.id))  #Submission_Short_Link
                                     row.append(str(submission.created_utc))  #Submission_Created_Epoch
                                     row.append(str(time.strftime('%m/%d/%Y %H:%M:%S',  time.gmtime(float(submission.created_utc)))))  #Submission_Created_GMT
-                                    row.append(string.replace(str(comment.body),'\r','  '))  #Comment_Body
+                                    row.append(str(comment.body).replace('\r',' ').replace('\n',' ').replace('\t',' '))  #Comment_Body
                                     row.append('/u/' + str(comment.author.name))  #Comment_Author
                                     row.append(str(comment.score))  #Comment_Score
-                                    row.append(string.replace(str(comment.permalink), 'www.reddit.com', 'np.reddit.com') + '?context=1000')  #Comment_Link
+                                    row.append('https://np.reddit.com/comments/' + submission.id + '/-/' + comment.id + '?context=1000')  #Comment_Link
 
                                     #Format the row into a pipe delimited string
-                                    delimited_row = '|'.join(row)
-                                    print delimited_row
+                                    delimited_row = '\t'.join(row)
+                                    print(delimited_row)
 
                                     #Append the row to the output file
                                     f = open(output_file, 'a')
@@ -102,11 +118,11 @@ def Main():
 
                         except (Exception) as e:
 
-                            print e.message
+                            print(e)
 
         except (Exception) as e:
 
-            print e.message
+            print(e)
 
 
 
